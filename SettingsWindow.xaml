@@ -1,0 +1,115 @@
+<Window x:Class="Naibao.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="naibao 设置"
+        Width="500"
+        Height="700"
+        MinWidth="460"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <GroupBox Header="显示与启动" Padding="8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <RadioButton x:Name="RbTopmost" Content="悬浮在最上层（默认）" GroupName="DisplayModeGroup" Margin="0,3"/>
+                        <RadioButton x:Name="RbTray" Content="隐藏到菜单栏（系统托盘）" GroupName="DisplayModeGroup" Margin="0,3"/>
+                        <CheckBox x:Name="CbAutoStart" Content="开机自启动" Margin="0,14,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,4">
+                            <TextBlock Text="启动时显示方式：" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="CmbStartupMode" Width="170" Margin="6,0,0,0">
+                                <ComboBoxItem Content="悬浮在最上层" Tag="topmost"/>
+                                <ComboBoxItem Content="隐藏到菜单栏" Tag="tray"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <TextBlock Text="提示：开机自启动在点击“保存”后立即生效；卸载程序前请先关闭该选项。"
+                                   FontSize="11" Foreground="Gray" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="网页快捷方式（单击宠物 → 网页跳转，有几个预设就显示几个）" Padding="8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <ListView x:Name="LvWebLinks" Height="140" SelectionChanged="LvWebLinks_SelectionChanged">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="名称" Width="130" DisplayMemberBinding="{Binding Name}"/>
+                                    <GridViewColumn Header="网址" Width="260" DisplayMemberBinding="{Binding Url}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="名称" VerticalAlignment="Center" Margin="0,0,8,4"/>
+                            <TextBox x:Name="TbName" Grid.Column="1" Margin="0,0,0,4" Padding="3"/>
+                            <TextBlock Text="网址" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox x:Name="TbUrl" Grid.Row="1" Grid.Column="1" Padding="3"
+                                     ToolTip="以 http:// 或 https:// 开头的完整网址"/>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button x:Name="BtnAddLink" Content="添加" Width="64" Click="AddLinkButton_Click"/>
+                            <Button x:Name="BtnSaveLink" Content="保存修改" Width="78" Margin="6,0,0,0" Click="SaveLinkButton_Click"/>
+                            <Button x:Name="BtnDeleteLink" Content="删除" Width="64" Margin="6,0,0,0" Click="DeleteLinkButton_Click"/>
+                            <Button x:Name="BtnUpLink" Content="上移" Width="64" Margin="6,0,0,0" Click="UpLinkButton_Click"/>
+                            <Button x:Name="BtnDownLink" Content="下移" Width="64" Margin="6,0,0,0" Click="DownLinkButton_Click"/>
+                        </StackPanel>
+                        <Button x:Name="BtnTestLink" Content="用浏览器测试当前网址" Width="160" HorizontalAlignment="Left"
+                                Margin="0,8,0,0" Click="TestLinkButton_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="整点报时（北京时间）" Padding="8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <RadioButton x:Name="RbSoundMessage" Content="有声音 + 消息提示（非静音）" GroupName="ChimeModeGroup" Margin="0,3"/>
+                        <RadioButton x:Name="RbMessageOnly" Content="音效静音（仅消息提示，无音效）" GroupName="ChimeModeGroup" Margin="0,3"/>
+                        <RadioButton x:Name="RbFullMute" Content="完全静音（不显示消息、不播放声音）" GroupName="ChimeModeGroup" Margin="0,3"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                            <TextBlock Text="报时音效：" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TbSoundPath" Width="200" IsReadOnly="True" Margin="4,0,4,0" Padding="3"
+                                     ToolTip="自定义报时音效文件"/>
+                            <Button x:Name="BtnBrowseSound" Content="选择..." Width="60" Click="BrowseSoundButton_Click"/>
+                            <Button x:Name="BtnTestSound" Content="试听" Width="56" Margin="4,0,0,0" Click="TestSoundButton_Click"/>
+                        </StackPanel>
+                        <TextBlock Text="支持 mp3 / wav；未选择音效文件时，“非静音”模式只显示消息提示。"
+                                   FontSize="11" Foreground="Gray"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <TextBlock Text="音量" VerticalAlignment="Center"/>
+                            <Slider x:Name="SlVolume" Minimum="0" Maximum="100" Width="230" Margin="8,0"
+                                    ValueChanged="SlVolume_ValueChanged"/>
+                            <TextBlock x:Name="LblVolume" Text="80%" Width="56" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="关于" Padding="8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="TbAbout" TextWrapping="Wrap"/>
+                        <Button x:Name="BtnOpenConfigDir" Content="打开配置目录" Width="130" HorizontalAlignment="Left"
+                                Margin="0,8,0,0" Click="OpenConfigDirButton_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="BtnSave" Content="保存" Width="90" Click="SaveButton_Click"/>
+            <Button x:Name="BtnCancel" Content="取消" Width="90" Margin="8,0,0,0" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

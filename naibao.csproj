@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>Naibao</RootNamespace>
+    <AssemblyName>naibao</AssemblyName>
+    <Product>naibao</Product>
+    <AssemblyTitle>naibao 桌面宠物</AssemblyTitle>
+    <Description>Windows 10 桌面宠物：网页跳转、截图、整点报时</Description>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0</FileVersion>
+    <ApplicationIcon>assets/naibao.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- WinForms 仅用于托盘图标：移除其全局 using，避免与 WPF 类型重名。 -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="assets/naibao.png" />
+    <Resource Include="assets/naibao.ico" />
+  </ItemGroup>
+
+</Project>

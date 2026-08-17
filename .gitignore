@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+.dotnet/
+.dotnet-cli-home/
+.tools/
+*.user
+*.suo
