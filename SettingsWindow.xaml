@@ -146,8 +146,8 @@
                             <TextBlock Text="秒后睡懒觉；再次移动鼠标触发起床" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <TextBlock Text="提示：动作 GIF 会自动按首帧/末帧与默认形象对齐；文件不存在时该动作自动跳过，不影响使用。"
-                                   FontSize="11" Foreground="Gray" Margin="0,8,0,0"/>
+                        <TextBlock Text="提示：安装包已自带 4 个动作 GIF（位于程序目录 gifs 文件夹）；路径留空或文件缺失时自动使用内置动作，也可以浏览选择自己的 GIF。动作帧会自动与默认形象对齐。"
+                                   FontSize="11" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </GroupBox>
 

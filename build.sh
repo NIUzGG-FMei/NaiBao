@@ -25,6 +25,10 @@ echo "==> 发布 win-x64 自包含单文件..."
     -p:IncludeNativeLibrariesForSelfExtract=true \
     -o "$DIR/publish/win-x64"
 
+echo "==> 复制内置动作 GIF 到发布目录..."
+mkdir -p "$DIR/publish/win-x64/gifs"
+cp "$DIR/assets/gifs/"*.GIF "$DIR/publish/win-x64/gifs/"
+
 echo "==> 生成 NSIS 安装包..."
 MAKENSIS="$DIR/.tools/nsis/root/usr/bin/makensis"
 if [ -x "$MAKENSIS" ]; then
@@ -38,10 +42,13 @@ echo "==> 打包绿色版压缩包..."
 python3 - "$DIR" <<'PY'
 import sys, zipfile, os
 base = os.path.join(sys.argv[1], "publish", "win-x64")
-out = os.path.join(sys.argv[1], "publish", "naibao-portable-1.1.3.zip")
+out = os.path.join(sys.argv[1], "publish", "naibao-portable-1.1.4.zip")
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-    for name in sorted(os.listdir(base)):
-        z.write(os.path.join(base, name), f"naibao/{name}")
+    for root, dirs, files in os.walk(base):
+        for name in sorted(files):
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, base)
+            z.write(full, f"naibao/{rel}")
 PY
 
 echo "==> 完成："

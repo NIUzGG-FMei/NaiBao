@@ -8,9 +8,13 @@ dotnet publish .\naibao.csproj -c Release -r win-x64 `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -o .\publish\win-x64
 
+Write-Host "==> 复制内置动作 GIF 到发布目录..."
+New-Item -ItemType Directory -Force -Path .\publish\win-x64\gifs | Out-Null
+Copy-Item .\assets\gifs\*.GIF .\publish\win-x64\gifs\ -Force
+
 Write-Host "==> 打包绿色版压缩包..."
-Compress-Archive -Path .\publish\win-x64\* -DestinationPath .\publish\naibao-portable-1.1.3.zip -Force
+Compress-Archive -Path .\publish\win-x64\* -DestinationPath .\publish\naibao-portable-1.1.4.zip -Force
 
 Write-Host "==> 产物：.\publish\win-x64\naibao.exe"
-Write-Host "==> 产物：.\publish\naibao-portable-1.1.3.zip"
+Write-Host "==> 产物：.\publish\naibao-portable-1.1.4.zip"
 Write-Host "==> 如需安装包：安装 NSIS 后运行  makensis .\installer\naibao.nsi"

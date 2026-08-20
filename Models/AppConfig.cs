@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 namespace Naibao.Models;
@@ -59,16 +60,16 @@ public sealed class AppConfig
     // ---------------- 动作与动画 ----------------
 
     /// <summary>大笑动作 GIF（左键点击触发）。</summary>
-    public string LaughGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\11.GIF";
+    public string LaughGifPath { get; set; } = DefaultGifPath("11.GIF");
 
     /// <summary>功夫动作 GIF（默认状态下随机触发）。</summary>
-    public string KungFuGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\22.GIF";
+    public string KungFuGifPath { get; set; } = DefaultGifPath("22.GIF");
 
     /// <summary>睡懒觉动作 GIF（鼠标长时间无操作触发）。</summary>
-    public string SleepGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\33.GIF";
+    public string SleepGifPath { get; set; } = DefaultGifPath("33.GIF");
 
     /// <summary>伸懒腰起床动作 GIF（睡眠后再次移动鼠标触发）。</summary>
-    public string WakeGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\44.GIF";
+    public string WakeGifPath { get; set; } = DefaultGifPath("44.GIF");
 
     /// <summary>是否开启“功夫”随机触发。</summary>
     public bool KungFuEnabled { get; set; } = true;
@@ -81,4 +82,8 @@ public sealed class AppConfig
 
     /// <summary>鼠标无操作多少秒后进入“睡懒觉”。</summary>
     public double IdleSleepSeconds { get; set; } = 300;
+
+    /// <summary>默认动作 GIF 路径：安装/解压目录下的 gifs 文件夹。</summary>
+    private static string DefaultGifPath(string fileName)
+        => Path.Combine(AppContext.BaseDirectory, "gifs", fileName);
 }

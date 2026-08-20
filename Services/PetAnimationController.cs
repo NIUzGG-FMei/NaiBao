@@ -62,7 +62,7 @@ public sealed class PetAnimationController : IDisposable
             return;
         }
 
-        PlayGif(PetState.Laughing, App.CurrentConfig.LaughGifPath,
+        PlayGif(PetState.Laughing, GifPathResolver.Resolve(App.CurrentConfig.LaughGifPath, "11.GIF"),
             freezeOnEnd: false, useLastFrameAsReference: false,
             onCompleted: () => SetState(PetState.Default));
     }
@@ -90,7 +90,7 @@ public sealed class PetAnimationController : IDisposable
         // 只在默认站姿时做功夫动作；大笑/睡觉/起床期间不触发。
         if (State == PetState.Default)
         {
-            PlayGif(PetState.KungFu, App.CurrentConfig.KungFuGifPath,
+            PlayGif(PetState.KungFu, GifPathResolver.Resolve(App.CurrentConfig.KungFuGifPath, "22.GIF"),
                 freezeOnEnd: false, useLastFrameAsReference: false,
                 onCompleted: () => SetState(PetState.Default));
         }
@@ -116,14 +116,14 @@ public sealed class PetAnimationController : IDisposable
 
     private void StartSleeping()
     {
-        PlayGif(PetState.Sleeping, App.CurrentConfig.SleepGifPath,
+        PlayGif(PetState.Sleeping, GifPathResolver.Resolve(App.CurrentConfig.SleepGifPath, "33.GIF"),
             freezeOnEnd: true, useLastFrameAsReference: false,
             onCompleted: null); // 睡姿保持最后一帧，状态仍为 Sleeping。
     }
 
     private void StartWaking()
     {
-        PlayGif(PetState.Waking, App.CurrentConfig.WakeGifPath,
+        PlayGif(PetState.Waking, GifPathResolver.Resolve(App.CurrentConfig.WakeGifPath, "44.GIF"),
             freezeOnEnd: false, useLastFrameAsReference: true,
             onCompleted: () =>
             {
