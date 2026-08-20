@@ -49,7 +49,16 @@ public partial class SettingsWindow : Window
         SlVolume.Value = Math.Clamp(cfg.Volume * 100, 0, 100);
         UpdateVolumeLabel();
 
-        TbAbout.Text = $"naibao v1.0.0\n配置目录：{ConfigService.ConfigDir}";
+        TbLaughGif.Text = cfg.LaughGifPath;
+        TbKungFuGif.Text = cfg.KungFuGifPath;
+        TbSleepGif.Text = cfg.SleepGifPath;
+        TbWakeGif.Text = cfg.WakeGifPath;
+        CbKungFuEnabled.IsChecked = cfg.KungFuEnabled;
+        TbKungFuMin.Text = cfg.KungFuMinMinutes.ToString("0.##");
+        TbKungFuMax.Text = cfg.KungFuMaxMinutes.ToString("0.##");
+        TbIdleSleep.Text = cfg.IdleSleepSeconds.ToString("0.##");
+
+        TbAbout.Text = $"naibao v1.1.0\n配置目录：{ConfigService.ConfigDir}";
     }
 
     // ---------------- 网页快捷方式 ----------------
@@ -201,6 +210,54 @@ public partial class SettingsWindow : Window
         }
     }
 
+    // ---------------- 动作 GIF ----------------
+
+    private void BrowseLaughGifButton_Click(object sender, RoutedEventArgs e) => BrowseGif(TbLaughGif, "选择“大笑”动作 GIF");
+    private void BrowseKungFuGifButton_Click(object sender, RoutedEventArgs e) => BrowseGif(TbKungFuGif, "选择“功夫”动作 GIF");
+    private void BrowseSleepGifButton_Click(object sender, RoutedEventArgs e) => BrowseGif(TbSleepGif, "选择“睡懒觉”动作 GIF");
+    private void BrowseWakeGifButton_Click(object sender, RoutedEventArgs e) => BrowseGif(TbWakeGif, "选择“伸懒腰起床”动作 GIF");
+
+    private void BrowseGif(TextBox target, string title)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = title,
+            Filter = "GIF 图片 (*.gif)|*.gif|所有文件 (*.*)|*.*"
+        };
+        if (dlg.ShowDialog(this) == true)
+        {
+            target.Text = dlg.FileName;
+        }
+    }
+
+    private bool TryReadKungFuRange(out double min, out double max)
+    {
+        min = 0;
+        max = 0;
+        if (!double.TryParse(TbKungFuMin.Text.Trim(), out min) || min < 0.1)
+        {
+            MessageBox.Show("“功夫”随机间隔最小值无效，请输入不小于 0.1 的分钟数。", "naibao",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        if (!double.TryParse(TbKungFuMax.Text.Trim(), out max) || max < 0.1)
+        {
+            MessageBox.Show("“功夫”随机间隔最大值无效，请输入不小于 0.1 的分钟数。", "naibao",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        if (max < min)
+        {
+            MessageBox.Show("“功夫”随机间隔最大值不能小于最小值。", "naibao",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        return true;
+    }
+
     // ---------------- 保存 / 取消 ----------------
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -223,6 +280,18 @@ public partial class SettingsWindow : Window
             }
         }
 
+        if (!TryReadKungFuRange(out double kungFuMin, out double kungFuMax))
+        {
+            return;
+        }
+
+        if (!double.TryParse(TbIdleSleep.Text.Trim(), out double idleSleepSeconds) || idleSleepSeconds < 10)
+        {
+            MessageBox.Show("“睡懒觉”等待时间无效，请输入不小于 10 的秒数。", "naibao",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         var cfg = App.CurrentConfig;
         cfg.DisplayMode = RbTray.IsChecked == true ? "tray" : "topmost";
         cfg.StartupMode = (CmbStartupMode.SelectedItem as ComboBoxItem)?.Tag as string ?? "topmost";
@@ -233,6 +302,15 @@ public partial class SettingsWindow : Window
             : RbFullMute.IsChecked == true ? "full_mute" : "sound_message";
         cfg.SoundPath = TbSoundPath.Text.Trim();
         cfg.Volume = SlVolume.Value / 100.0;
+
+        cfg.LaughGifPath = TbLaughGif.Text.Trim();
+        cfg.KungFuGifPath = TbKungFuGif.Text.Trim();
+        cfg.SleepGifPath = TbSleepGif.Text.Trim();
+        cfg.WakeGifPath = TbWakeGif.Text.Trim();
+        cfg.KungFuEnabled = CbKungFuEnabled.IsChecked == true;
+        cfg.KungFuMinMinutes = kungFuMin;
+        cfg.KungFuMaxMinutes = kungFuMax;
+        cfg.IdleSleepSeconds = idleSleepSeconds;
 
         ConfigService.Save(cfg);
         AutoStartService.SetEnabled(cfg.AutoStart);

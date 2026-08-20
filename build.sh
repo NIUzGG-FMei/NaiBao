@@ -38,7 +38,7 @@ echo "==> 打包绿色版压缩包..."
 python3 - "$DIR" <<'PY'
 import sys, zipfile, os
 base = os.path.join(sys.argv[1], "publish", "win-x64")
-out = os.path.join(sys.argv[1], "publish", "naibao-portable-1.0.0.zip")
+out = os.path.join(sys.argv[1], "publish", "naibao-portable-1.1.0.zip")
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for name in sorted(os.listdir(base)):
         z.write(os.path.join(base, name), f"naibao/{name}")

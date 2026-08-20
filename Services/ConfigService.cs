@@ -62,6 +62,15 @@ public static class ConfigService
         c.WebLinks = c.WebLinks
             .Where(l => !string.IsNullOrWhiteSpace(l.Name) && WebLinkService.IsValidUrl(l.Url))
             .ToList();
+
+        c.KungFuMinMinutes = c.KungFuMinMinutes is >= 0.1 and <= 120 ? c.KungFuMinMinutes : 2;
+        c.KungFuMaxMinutes = c.KungFuMaxMinutes is >= 0.1 and <= 120 ? c.KungFuMaxMinutes : 5;
+        if (c.KungFuMaxMinutes < c.KungFuMinMinutes)
+        {
+            (c.KungFuMinMinutes, c.KungFuMaxMinutes) = (c.KungFuMaxMinutes, c.KungFuMinMinutes);
+        }
+
+        c.IdleSleepSeconds = c.IdleSleepSeconds is >= 10 and <= 86400 ? c.IdleSleepSeconds : 300;
         return c;
     }
 }

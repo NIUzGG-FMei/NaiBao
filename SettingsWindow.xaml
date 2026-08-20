@@ -33,7 +33,7 @@
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="网页快捷方式（单击宠物 → 网页跳转，有几个预设就显示几个）" Padding="8" Margin="0,0,0,10">
+                <GroupBox Header="网页快捷方式（右键宠物 → 网页跳转，有几个预设就显示几个）" Padding="8" Margin="0,0,0,10">
                     <StackPanel>
                         <ListView x:Name="LvWebLinks" Height="140" SelectionChanged="LvWebLinks_SelectionChanged">
                             <ListView.View>
@@ -93,6 +93,61 @@
                                     ValueChanged="SlVolume_ValueChanged"/>
                             <TextBlock x:Name="LblVolume" Text="80%" Width="56" VerticalAlignment="Center"/>
                         </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="动作与动画" Padding="8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="左键点击宠物：大笑；右键：弹出菜单；随机间隔：功夫；长时间不动：睡懒觉。"
+                                   FontSize="11" Foreground="Gray" Margin="0,0,0,8"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="大笑GIF" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="TbLaughGif" Grid.Column="1" Margin="4,2" Padding="3" IsReadOnly="True"/>
+                            <Button x:Name="BtnBrowseLaugh" Grid.Column="2" Content="选择" Width="52" Margin="4,2,0,2" Click="BrowseLaughGifButton_Click"/>
+
+                            <TextBlock Text="功夫GIF" Grid.Row="1" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="TbKungFuGif" Grid.Row="1" Grid.Column="1" Margin="4,2" Padding="3" IsReadOnly="True"/>
+                            <Button x:Name="BtnBrowseKungFu" Grid.Row="1" Grid.Column="2" Content="选择" Width="52" Margin="4,2,0,2" Click="BrowseKungFuGifButton_Click"/>
+
+                            <TextBlock Text="睡觉GIF" Grid.Row="2" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="TbSleepGif" Grid.Row="2" Grid.Column="1" Margin="4,2" Padding="3" IsReadOnly="True"/>
+                            <Button x:Name="BtnBrowseSleep" Grid.Row="2" Grid.Column="2" Content="选择" Width="52" Margin="4,2,0,2" Click="BrowseSleepGifButton_Click"/>
+
+                            <TextBlock Text="起床GIF" Grid.Row="3" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="TbWakeGif" Grid.Row="3" Grid.Column="1" Margin="4,2" Padding="3" IsReadOnly="True"/>
+                            <Button x:Name="BtnBrowseWake" Grid.Row="3" Grid.Column="2" Content="选择" Width="52" Margin="4,2,0,2" Click="BrowseWakeGifButton_Click"/>
+                        </Grid>
+
+                        <CheckBox x:Name="CbKungFuEnabled" Content="开启随机“功夫”动作" Margin="0,10,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,4">
+                            <TextBlock Text="随机间隔：" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TbKungFuMin" Width="52" Text="2" TextAlignment="Center" Padding="3"/>
+                            <TextBlock Text="～" VerticalAlignment="Center" Margin="4,0"/>
+                            <TextBox x:Name="TbKungFuMax" Width="52" Text="5" TextAlignment="Center" Padding="3"/>
+                            <TextBlock Text="分钟（触发后重新随机）" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,6">
+                            <TextBlock Text="鼠标无操作" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TbIdleSleep" Width="52" Text="300" TextAlignment="Center" Padding="3" Margin="6,0"/>
+                            <TextBlock Text="秒后睡懒觉；再次移动鼠标触发起床" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <TextBlock Text="提示：动作 GIF 会自动按首帧/末帧与默认形象对齐；文件不存在时该动作自动跳过，不影响使用。"
+                                   FontSize="11" Foreground="Gray" Margin="0,8,0,0"/>
                     </StackPanel>
                 </GroupBox>
 

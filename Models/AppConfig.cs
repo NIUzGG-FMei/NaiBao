@@ -55,4 +55,30 @@ public sealed class AppConfig
 
     /// <summary>音量 0.0 - 1.0。</summary>
     public double Volume { get; set; } = 0.8;
+
+    // ---------------- 动作与动画 ----------------
+
+    /// <summary>大笑动作 GIF（左键点击触发）。</summary>
+    public string LaughGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\11.GIF";
+
+    /// <summary>功夫动作 GIF（默认状态下随机触发）。</summary>
+    public string KungFuGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\22.GIF";
+
+    /// <summary>睡懒觉动作 GIF（鼠标长时间无操作触发）。</summary>
+    public string SleepGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\33.GIF";
+
+    /// <summary>伸懒腰起床动作 GIF（睡眠后再次移动鼠标触发）。</summary>
+    public string WakeGifPath { get; set; } = @"D:\01_Edge download\discord_pic\老牧师音效\44.GIF";
+
+    /// <summary>是否开启“功夫”随机触发。</summary>
+    public bool KungFuEnabled { get; set; } = true;
+
+    /// <summary>“功夫”随机触发最小间隔（分钟）。</summary>
+    public double KungFuMinMinutes { get; set; } = 2;
+
+    /// <summary>“功夫”随机触发最大间隔（分钟）。</summary>
+    public double KungFuMaxMinutes { get; set; } = 5;
+
+    /// <summary>鼠标无操作多少秒后进入“睡懒觉”。</summary>
+    public double IdleSleepSeconds { get; set; } = 300;
 }

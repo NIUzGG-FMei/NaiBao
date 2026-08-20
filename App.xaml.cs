@@ -20,11 +20,15 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private HourlyChimeService? _chime;
     private SoundService? _sound;
+    private PetAnimationController? _animator;
     private bool _petVisibleBeforeScreenshot;
 
     public static AppConfig CurrentConfig { get; private set; } = new();
 
     public static App CurrentApp => (App)Current;
+
+    /// <summary>宠物动作状态机（大笑 / 功夫 / 睡懒觉 / 起床）。</summary>
+    public PetAnimationController Animator => _animator!;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -47,6 +51,9 @@ public partial class App : Application
         _sound = new SoundService();
         _petWindow = new PetWindow();
         _petWindow.RestorePosition();
+
+        _animator = new PetAnimationController(_petWindow);
+        _animator.Start();
 
         _tray = new TrayService();
         _tray.ShowPetRequested += ShowPet;
@@ -79,6 +86,7 @@ public partial class App : Application
 
         _chime?.Stop();
         _sound?.Dispose();
+        _animator?.Dispose();
         _tray?.Dispose();
 
         try { _mutex?.ReleaseMutex(); } catch { /* 未持有或已释放 */ }
@@ -110,6 +118,8 @@ public partial class App : Application
         {
             ShowPet();
         }
+
+        _animator?.ApplyConfig();
     }
 
     // ---------------- 设置 / 退出 ----------------
