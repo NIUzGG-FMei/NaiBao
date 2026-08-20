@@ -278,15 +278,11 @@ public sealed class GifPlayer : IDisposable
         try
         {
             if (decoder.Metadata is BitmapMetadata metadata
-                && metadata.GetQuery("/logscrdesc") is byte[] bytes
-                && bytes.Length >= 7)
+                && TryReadInt(metadata, "/logscrdesc/Width", out int width)
+                && TryReadInt(metadata, "/logscrdesc/Height", out int height)
+                && width > 0 && height > 0)
             {
-                int width = bytes[0] | (bytes[1] << 8);
-                int height = bytes[2] | (bytes[3] << 8);
-                if (width > 0 && height > 0)
-                {
-                    return (width, height);
-                }
+                return (width, height);
             }
         }
         catch
@@ -345,10 +341,10 @@ public sealed class GifPlayer : IDisposable
         try
         {
             if (frame.Metadata is BitmapMetadata metadata
-                && metadata.GetQuery("/imgdesc") is byte[] bytes
-                && bytes.Length >= 9)
+                && TryReadInt(metadata, "/imgdesc/Left", out int left)
+                && TryReadInt(metadata, "/imgdesc/Top", out int top))
             {
-                return (bytes[0] | (bytes[1] << 8), bytes[2] | (bytes[3] << 8));
+                return (left, top);
             }
         }
         catch
@@ -357,6 +353,26 @@ public sealed class GifPlayer : IDisposable
         }
 
         return (0, 0);
+    }
+
+    private static bool TryReadInt(BitmapMetadata metadata, string query, out int value)
+    {
+        value = 0;
+        try
+        {
+            var result = metadata.GetQuery(query);
+            if (result != null)
+            {
+                value = Convert.ToInt32(result);
+                return true;
+            }
+        }
+        catch
+        {
+            // 忽略单个查询失败。
+        }
+
+        return false;
     }
 
     /// <summary>用参考帧内容包围盒对齐默认 PNG，计算统一缩放与平移。</summary>
@@ -454,14 +470,33 @@ public sealed class GifPlayer : IDisposable
     {
         try
         {
-            if (frame.Metadata is BitmapMetadata metadata
-                && metadata.GetQuery("/grctlext") is byte[] bytes
-                && bytes.Length >= 4)
+            if (frame.Metadata is BitmapMetadata metadata)
             {
-                // GCE: bytes[0]=packed, bytes[1]=delay低字节, bytes[2]=delay高字节
-                int delayCentis = bytes[1] | (bytes[2] << 8);
-                int disposal = (bytes[0] >> 2) & 0x07;
-                return (Math.Clamp(delayCentis * 10, 10, 500), disposal);
+                int delayCentis = 0;
+                int disposal = -1;
+                bool delayRead = TryReadInt(metadata, "/grctlext/Delay", out delayCentis);
+                TryReadInt(metadata, "/grctlext/Disposal", out disposal);
+
+                if (disposal < 0)
+                {
+                    // 读不到 Disposal 时：有透明标志的帧按“恢复背景”处理，避免出现叠影。
+                    bool transparent = false;
+                    try
+                    {
+                        transparent = Convert.ToBoolean(metadata.GetQuery("/grctlext/TransparencyFlag"));
+                    }
+                    catch
+                    {
+                        // 忽略。
+                    }
+
+                    disposal = transparent ? 2 : 0;
+                }
+
+                int delayMs = delayRead && delayCentis > 0
+                    ? Math.Clamp(delayCentis * 10, 10, 500)
+                    : 41;
+                return (delayMs, disposal);
             }
         }
         catch
