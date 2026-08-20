@@ -58,7 +58,7 @@ public partial class SettingsWindow : Window
         TbKungFuMax.Text = cfg.KungFuMaxMinutes.ToString("0.##");
         TbIdleSleep.Text = cfg.IdleSleepSeconds.ToString("0.##");
 
-        TbAbout.Text = $"naibao v1.1.1\n配置目录：{ConfigService.ConfigDir}";
+        TbAbout.Text = $"naibao v1.1.2\n配置目录：{ConfigService.ConfigDir}";
     }
 
     // ---------------- 网页快捷方式 ----------------

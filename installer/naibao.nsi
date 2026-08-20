@@ -4,7 +4,7 @@ Unicode true
 
 !define APP_NAME "naibao"
 !define APP_DISPLAY "naibao 桌面宠物"
-!define APP_VERSION "1.1.1"
+!define APP_VERSION "1.1.2"
 !define APP_PUBLISHER "naibao"
 !define APP_EXE "naibao.exe"
 

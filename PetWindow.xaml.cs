@@ -318,39 +318,61 @@ public partial class PetWindow : Window
         _chimeCloseTimer.Start();
     }
 
+    private Point GetTargetScreenOrigin()
+    {
+        var point = PetImage.PointToScreen(new Point(0, 0));
+        var source = PresentationSource.FromVisual(this);
+        if (source?.CompositionTarget != null)
+        {
+            point = source.CompositionTarget.TransformFromDevice.Transform(point);
+        }
+
+        return point;
+    }
+
     private CustomPopupPlacement[] PlaceChimePopup(Size popupSize, Size targetSize, Point offset)
     {
+        // 自定义放置的返回坐标是“相对 PlacementTarget 左上角”，这里统一转成相对坐标。
+        var origin = GetTargetScreenOrigin();
         var wa = SystemParameters.WorkArea;
 
-        double x = Math.Max(wa.Left + 8,
-            Math.Min(offset.X + targetSize.Width / 2 - popupSize.Width / 2, wa.Right - popupSize.Width - 8));
+        double x = (targetSize.Width - popupSize.Width) / 2;
+        double aboveY = -popupSize.Height - 10;
+        double belowY = targetSize.Height + 10;
 
-        double above = offset.Y - popupSize.Height - 10;
-        double below = offset.Y + targetSize.Height + 10;
+        double absAbove = origin.Y + aboveY;
+        double y = absAbove >= wa.Top + 8
+            ? aboveY
+            : Math.Min(belowY, wa.Bottom - popupSize.Height - 8 - origin.Y);
 
-        double y = above >= wa.Top + 8
-            ? above
-            : Math.Min(below, wa.Bottom - popupSize.Height - 8);
+        double absX = origin.X + x;
+        double clampedAbsX = Math.Max(wa.Left + 8,
+            Math.Min(absX, wa.Right - popupSize.Width - 8));
+        x = clampedAbsX - origin.X;
 
         return new[] { new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Vertical) };
     }
 
     private CustomPopupPlacement[] PlaceMenuPopup(Size popupSize, Size targetSize, Point offset)
     {
+        var origin = GetTargetScreenOrigin();
         var wa = SystemParameters.WorkArea;
 
         // 泡泡底部贴近宠物“头顶”（默认形象内容的顶部），不遮挡宠物本体。
-        double headTop = offset.Y + targetSize.Height * ImageMetrics.DefaultPetContentTopRatio;
-        double y = headTop - 10 - popupSize.Height;
+        double headTop = targetSize.Height * ImageMetrics.DefaultPetContentTopRatio;
+        double x = (targetSize.Width - popupSize.Width) / 2;
+        double aboveY = headTop - 10 - popupSize.Height;
+        double belowY = targetSize.Height + 10;
 
-        if (y < wa.Top + 8)
-        {
-            // 屏幕上方空间不足时，改放到宠物下方并贴近工作区底部。
-            y = Math.Min(offset.Y + targetSize.Height + 10, wa.Bottom - popupSize.Height - 8);
-        }
+        double absAbove = origin.Y + aboveY;
+        double y = absAbove >= wa.Top + 8
+            ? aboveY
+            : Math.Min(belowY, wa.Bottom - popupSize.Height - 8 - origin.Y);
 
-        double x = Math.Max(wa.Left + 8,
-            Math.Min(offset.X + targetSize.Width / 2 - popupSize.Width / 2, wa.Right - popupSize.Width - 8));
+        double absX = origin.X + x;
+        double clampedAbsX = Math.Max(wa.Left + 8,
+            Math.Min(absX, wa.Right - popupSize.Width - 8));
+        x = clampedAbsX - origin.X;
 
         return new[] { new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Vertical) };
     }

@@ -220,11 +220,10 @@ public sealed class GifPlayer : IDisposable
         return ComposeRawFrames(decoder);
     }
 
-    /// <summary>把 GIF 每帧按 disposal 规则合成到完整画布上。</summary>
+    /// <summary>把 GIF 每帧按 disposal 规则合成到逻辑画布上（帧尺寸/偏移可能各不相同）。</summary>
     private static (List<BitmapSource> frames, List<int> delays) ComposeRawFrames(GifBitmapDecoder decoder)
     {
-        int width = decoder.Frames[0].PixelWidth;
-        int height = decoder.Frames[0].PixelHeight;
+        var (width, height) = GetLogicalScreenSize(decoder);
         int stride = width * 4;
 
         var canvas = new byte[height * stride];
@@ -237,10 +236,14 @@ public sealed class GifPlayer : IDisposable
         foreach (var frame in decoder.Frames)
         {
             var bgra = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
-            var pixels = new byte[height * stride];
-            bgra.CopyPixels(pixels, stride, 0);
+            int frameWidth = bgra.PixelWidth;
+            int frameHeight = bgra.PixelHeight;
+            int frameStride = frameWidth * 4;
+            var pixels = new byte[frameHeight * frameStride];
+            bgra.CopyPixels(pixels, frameStride, 0);
 
             var (delay, disposal) = ReadFrameMeta(frame);
+            var (left, top) = ReadFrameOffset(frame);
 
             if (previousDisposal == 2)
             {
@@ -256,19 +259,7 @@ public sealed class GifPlayer : IDisposable
                 snapshot = (byte[])canvas.Clone();
             }
 
-            for (int i = 0; i < pixels.Length; i += 4)
-            {
-                byte alpha = pixels[i + 3];
-                if (alpha == 0)
-                {
-                    continue; // 透明像素保留上一帧内容（disposal 0/1 的标准行为）
-                }
-
-                canvas[i] = pixels[i];
-                canvas[i + 1] = pixels[i + 1];
-                canvas[i + 2] = pixels[i + 2];
-                canvas[i + 3] = alpha;
-            }
+            CopyFrameIntoCanvas(canvas, width, height, pixels, frameWidth, frameHeight, left, top);
 
             var composed = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32,
                 null, (byte[])canvas.Clone(), stride);
@@ -279,6 +270,93 @@ public sealed class GifPlayer : IDisposable
         }
 
         return (frames, delays);
+    }
+
+    /// <summary>GIF 逻辑屏幕尺寸（各子帧合成到该画布上）。</summary>
+    private static (int width, int height) GetLogicalScreenSize(GifBitmapDecoder decoder)
+    {
+        try
+        {
+            if (decoder.Metadata is BitmapMetadata metadata
+                && metadata.GetQuery("/logscrdesc") is byte[] bytes
+                && bytes.Length >= 7)
+            {
+                int width = bytes[0] | (bytes[1] << 8);
+                int height = bytes[2] | (bytes[3] << 8);
+                if (width > 0 && height > 0)
+                {
+                    return (width, height);
+                }
+            }
+        }
+        catch
+        {
+            // 元数据不可用时退回最大帧尺寸。
+        }
+
+        int maxWidth = 0, maxHeight = 0;
+        foreach (var frame in decoder.Frames)
+        {
+            maxWidth = Math.Max(maxWidth, frame.PixelWidth);
+            maxHeight = Math.Max(maxHeight, frame.PixelHeight);
+        }
+
+        return (Math.Max(1, maxWidth), Math.Max(1, maxHeight));
+    }
+
+    private static void CopyFrameIntoCanvas(byte[] canvas, int canvasWidth, int canvasHeight,
+        byte[] pixels, int frameWidth, int frameHeight, int left, int top)
+    {
+        int srcStartX = left < 0 ? -left : 0;
+        int srcStartY = top < 0 ? -top : 0;
+        int dstStartX = Math.Max(0, left);
+        int dstStartY = Math.Max(0, top);
+        int copyWidth = Math.Min(frameWidth - srcStartX, canvasWidth - dstStartX);
+        int copyHeight = Math.Min(frameHeight - srcStartY, canvasHeight - dstStartY);
+        if (copyWidth <= 0 || copyHeight <= 0)
+        {
+            return;
+        }
+
+        for (int y = 0; y < copyHeight; y++)
+        {
+            int srcRow = ((srcStartY + y) * frameWidth + srcStartX) * 4;
+            int dstRow = ((dstStartY + y) * canvasWidth + dstStartX) * 4;
+            for (int x = 0; x < copyWidth; x++)
+            {
+                int src = srcRow + x * 4;
+                byte alpha = pixels[src + 3];
+                if (alpha == 0)
+                {
+                    continue; // 透明像素保留上一帧内容（disposal 0/1 的标准行为）
+                }
+
+                int dst = dstRow + x * 4;
+                canvas[dst] = pixels[src];
+                canvas[dst + 1] = pixels[src + 1];
+                canvas[dst + 2] = pixels[src + 2];
+                canvas[dst + 3] = alpha;
+            }
+        }
+    }
+
+    private static (int left, int top) ReadFrameOffset(BitmapFrame frame)
+    {
+        try
+        {
+            if (frame.Metadata is BitmapMetadata metadata
+                && metadata.GetQuery("/imgdesc") is byte[] bytes
+                && bytes.Length >= 9)
+            {
+                return (bytes[0] | (bytes[1] << 8), bytes[2] | (bytes[3] << 8));
+            }
+        }
+        catch
+        {
+            // 元数据不可用时按左上角 (0,0) 处理。
+        }
+
+        return (0, 0);
     }
 
     /// <summary>用参考帧内容包围盒对齐默认 PNG，计算统一缩放与平移。</summary>

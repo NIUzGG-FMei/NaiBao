@@ -11,8 +11,8 @@
     <Product>naibao</Product>
     <AssemblyTitle>naibao 桌面宠物</AssemblyTitle>
     <Description>Windows 10 桌面宠物：网页跳转、截图、整点报时</Description>
-    <Version>1.1.1</Version>
-    <FileVersion>1.1.1</FileVersion>
+    <Version>1.1.2</Version>
+    <FileVersion>1.1.2</FileVersion>
     <ApplicationIcon>assets/naibao.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
