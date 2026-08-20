@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -141,7 +142,10 @@ public sealed class PetAnimationController : IDisposable
         bool started = _player.Play(path, _pet.DisplayCanvasSize, freezeOnEnd, useLastFrameAsReference);
         if (!started)
         {
-            // GIF 缺失或读取失败：回到默认形象，保证功能可用。
+            // GIF 缺失或读取失败：提示原因，并回到默认形象保证功能可用。
+            MessageBox.Show($"动作 GIF 无法播放：\n{path}\n\n{_player.LastError ?? "未知错误"}",
+                "naibao", MessageBoxButton.OK, MessageBoxImage.Warning);
+
             _onPlayerCompleted = null;
             _pet.ShowDefaultImage();
             SetState(PetState.Default);

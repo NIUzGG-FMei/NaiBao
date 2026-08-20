@@ -7,18 +7,35 @@ using System.Windows.Threading;
 namespace Naibao.Services;
 
 /// <summary>
-/// 自实现的 GIF 播放器：逐帧解码 → 按 GIF disposal 规则合成完整帧 →
-/// 以首帧（或末帧）内容包围盒对齐默认宠物形象，消除动作衔接跳变。
+/// 自实现的 GIF 播放器：
+/// 1) 逐帧解码并按 GIF disposal 规则合成完整帧；
+/// 2) 用首帧（或末帧）内容包围盒对齐默认宠物形象；
+/// 3) 播放时逐帧惰性渲染（避免打开时长时间卡顿）；
+/// 4) 对齐/渲染失败时自动降级为直接播放原始帧，保证动作一定能动。
 /// </summary>
 public sealed class GifPlayer : IDisposable
 {
+    private sealed class LoadedAnimation
+    {
+        public List<BitmapSource> RawFrames { get; } = new();
+        public List<int> DelaysMs { get; } = new();
+        public List<BitmapSource?> DisplayFrames { get; } = new();
+        public double Scale = 1;
+        public double Dx;
+        public double Dy;
+        public int OutSize;
+        public bool UseTransform;
+    }
+
     private readonly DispatcherTimer _timer = new();
-    private List<BitmapSource>? _frames;
-    private List<int>? _delaysMs;
+    private LoadedAnimation? _animation;
     private int _index;
     private bool _freezeOnEnd;
 
     public bool IsPlaying { get; private set; }
+
+    /// <summary>最近一次加载失败/降级的错误信息（供调试与提示）。</summary>
+    public string? LastError { get; private set; }
 
     public event Action<BitmapSource>? FrameReady;
     public event Action? Completed;
@@ -36,30 +53,40 @@ public sealed class GifPlayer : IDisposable
     public bool Play(string? path, int outputCanvasSize, bool freezeOnEnd, bool useLastFrameAsReference)
     {
         Stop();
+        LastError = null;
 
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
+            LastError = "文件不存在或路径为空。";
             return false;
         }
 
-        List<BitmapSource> frames;
-        List<int> delays;
+        LoadedAnimation? animation;
         try
         {
-            (frames, delays) = LoadAndNormalize(path, outputCanvasSize, useLastFrameAsReference);
+            animation = LoadAnimation(path, outputCanvasSize, useLastFrameAsReference);
         }
-        catch
+        catch (Exception ex)
         {
+            // 完整加载失败（例如解码异常）：记录错误，并尝试最简播放。
+            LastError = ex.ToString();
+            try
+            {
+                animation = LoadRawAnimation(path);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        if (animation.RawFrames.Count == 0)
+        {
+            LastError ??= "GIF 中没有可播放的帧。";
             return false;
         }
 
-        if (frames.Count == 0)
-        {
-            return false;
-        }
-
-        _frames = frames;
-        _delaysMs = delays;
+        _animation = animation;
         _index = 0;
         _freezeOnEnd = freezeOnEnd;
         IsPlaying = true;
@@ -72,20 +99,19 @@ public sealed class GifPlayer : IDisposable
         _timer.Stop();
         IsPlaying = false;
         _index = 0;
-        _frames = null;
-        _delaysMs = null;
+        _animation = null;
     }
 
     private void OnTimerTick(object? sender, EventArgs e)
     {
         _timer.Stop();
-        if (_frames == null)
+        if (_animation == null)
         {
             return;
         }
 
         _index++;
-        if (_index >= _frames.Count)
+        if (_index >= _animation.RawFrames.Count)
         {
             // 最后一帧已经显示过；freezeOnEnd 时保持最后一帧即可。
             IsPlaying = false;
@@ -98,27 +124,90 @@ public sealed class GifPlayer : IDisposable
 
     private void EmitCurrentFrame()
     {
-        if (_frames == null || _delaysMs == null || _index >= _frames.Count)
+        if (_animation == null || _index >= _animation.RawFrames.Count)
         {
             return;
         }
 
-        FrameReady?.Invoke(_frames[_index]);
-        _timer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(_delaysMs[_index], 10, 500));
+        FrameReady?.Invoke(GetDisplayFrame(_index));
+        _timer.Interval = TimeSpan.FromMilliseconds(
+            Math.Clamp(_animation.DelaysMs[_index], 10, 500));
         _timer.Start();
+    }
+
+    /// <summary>惰性渲染：只渲染当前要显示的一帧，并缓存结果。</summary>
+    private BitmapSource GetDisplayFrame(int index)
+    {
+        var cached = _animation!.DisplayFrames[index];
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BitmapSource source = _animation.RawFrames[index];
+        if (_animation.UseTransform)
+        {
+            try
+            {
+                cached = RenderScaledFrame(source, _animation.Scale, _animation.Dx,
+                    _animation.Dy, _animation.OutSize);
+            }
+            catch (Exception ex)
+            {
+                LastError ??= ex.ToString();
+                cached = source; // 渲染失败：直接用原始帧，保证动画继续。
+            }
+        }
+        else
+        {
+            cached = source;
+        }
+
+        _animation.DisplayFrames[index] = cached;
+        return cached;
     }
 
     public void Dispose()
     {
         _timer.Stop();
         _timer.Tick -= OnTimerTick;
-        _frames = null;
+        _animation = null;
     }
 
-    // ---------------- 加载与对齐 ----------------
+    // ---------------- 加载 ----------------
 
-    private static (List<BitmapSource> frames, List<int> delays) LoadAndNormalize(
+    private static LoadedAnimation LoadAnimation(
         string path, int outputCanvasSize, bool useLastFrameAsReference)
+    {
+        var (rawFrames, delays) = LoadRawFrames(path);
+        var animation = new LoadedAnimation
+        {
+            OutSize = Math.Max(64, outputCanvasSize)
+        };
+        animation.RawFrames.AddRange(rawFrames);
+        animation.DelaysMs.AddRange(delays);
+        animation.DisplayFrames.AddRange(new BitmapSource?[rawFrames.Count]);
+
+        int referenceIndex = useLastFrameAsReference ? rawFrames.Count - 1 : 0;
+        ComputeTransform(animation, referenceIndex);
+        return animation;
+    }
+
+    private static LoadedAnimation LoadRawAnimation(string path)
+    {
+        var (rawFrames, delays) = LoadRawFrames(path);
+        var animation = new LoadedAnimation
+        {
+            UseTransform = false,
+            OutSize = rawFrames.Count > 0 ? rawFrames[0].PixelWidth : 160
+        };
+        animation.RawFrames.AddRange(rawFrames);
+        animation.DelaysMs.AddRange(delays);
+        animation.DisplayFrames.AddRange(new BitmapSource?[rawFrames.Count]);
+        return animation;
+    }
+
+    private static (List<BitmapSource> frames, List<int> delays) LoadRawFrames(string path)
     {
         var decoder = new GifBitmapDecoder(new Uri(path),
             BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -128,9 +217,7 @@ public sealed class GifPlayer : IDisposable
             return (new List<BitmapSource>(), new List<int>());
         }
 
-        var (rawFrames, delays) = ComposeRawFrames(decoder);
-        var frames = NormalizeFrames(rawFrames, useLastFrameAsReference ? rawFrames.Count - 1 : 0, outputCanvasSize);
-        return (frames, delays);
+        return ComposeRawFrames(decoder);
     }
 
     /// <summary>把 GIF 每帧按 disposal 规则合成到完整画布上。</summary>
@@ -194,72 +281,78 @@ public sealed class GifPlayer : IDisposable
         return (frames, delays);
     }
 
-    /// <summary>用参考帧内容包围盒对齐默认 PNG，并把全部帧渲染进统一画布。</summary>
-    private static List<BitmapSource> NormalizeFrames(
-        List<BitmapSource> rawFrames, int referenceIndex, int outputCanvasSize)
+    /// <summary>用参考帧内容包围盒对齐默认 PNG，计算统一缩放与平移。</summary>
+    private static void ComputeTransform(LoadedAnimation animation, int referenceIndex)
     {
-        var referenceBounds = ImageMetrics.GetContentBounds(rawFrames[referenceIndex]);
-        if (referenceBounds == null)
+        try
         {
-            return rawFrames;
-        }
-
-        var refBox = referenceBounds.Value;
-        var defaultBox = ImageMetrics.DefaultPetBounds;
-        if (defaultBox == Int32Rect.Empty || defaultBox.Width <= 0 || defaultBox.Height <= 0)
-        {
-            return rawFrames;
-        }
-
-        int outSize = Math.Max(64, outputCanvasSize);
-        double outScale = outSize / 1024.0;
-
-        // 以参考帧（默认站姿）的宽高比对齐默认 PNG，保证动作首帧/末帧与静态形象重合。
-        double scale = (defaultBox.Width * outScale) / refBox.Width;
-        double dx = defaultBox.X * outScale - refBox.X * scale;
-        double dy = defaultBox.Y * outScale - refBox.Y * scale;
-
-        // 检查所有帧按此变换后是否越界；越界则缩小并把参考帧中心对齐默认中心。
-        double unionLeft = double.MaxValue, unionTop = double.MaxValue;
-        double unionRight = double.MinValue, unionBottom = double.MinValue;
-        foreach (var frame in rawFrames)
-        {
-            var bounds = ImageMetrics.GetContentBounds(frame);
-            if (bounds == null)
+            // 每帧只计算一次内容包围盒，避免重复像素扫描造成首帧前卡顿。
+            var boundsList = new List<Int32Rect?>(animation.RawFrames.Count);
+            foreach (var frame in animation.RawFrames)
             {
-                continue;
+                boundsList.Add(ImageMetrics.GetContentBounds(frame));
             }
 
-            var b = bounds.Value;
-            unionLeft = Math.Min(unionLeft, b.X * scale + dx);
-            unionTop = Math.Min(unionTop, b.Y * scale + dy);
-            unionRight = Math.Max(unionRight, (b.X + b.Width) * scale + dx);
-            unionBottom = Math.Max(unionBottom, (b.Y + b.Height) * scale + dy);
-        }
+            var referenceBounds = boundsList[referenceIndex];
+            var defaultBox = ImageMetrics.DefaultPetBounds;
+            if (referenceBounds == null || defaultBox == Int32Rect.Empty
+                || defaultBox.Width <= 0 || defaultBox.Height <= 0)
+            {
+                return; // 保持 UseTransform = false，直接播放原始帧。
+            }
 
-        double margin = Math.Max(2, outSize * 0.02);
-        if (unionRight - unionLeft > outSize - 2 * margin
-            || unionBottom - unionTop > outSize - 2 * margin)
+            var refBox = referenceBounds.Value;
+            int outSize = animation.OutSize;
+            double outScale = outSize / 1024.0;
+
+            // 以参考帧（默认站姿）的宽度对齐默认 PNG，保证动作首帧/末帧与静态形象重合。
+            double scale = (defaultBox.Width * outScale) / refBox.Width;
+            double dx = defaultBox.X * outScale - refBox.X * scale;
+            double dy = defaultBox.Y * outScale - refBox.Y * scale;
+
+            // 检查所有帧按此变换后是否越界；越界则缩小并把参考帧中心对齐默认中心。
+            double unionLeft = double.MaxValue, unionTop = double.MaxValue;
+            double unionRight = double.MinValue, unionBottom = double.MinValue;
+            foreach (var bounds in boundsList)
+            {
+                if (bounds == null)
+                {
+                    continue;
+                }
+
+                var b = bounds.Value;
+                unionLeft = Math.Min(unionLeft, b.X * scale + dx);
+                unionTop = Math.Min(unionTop, b.Y * scale + dy);
+                unionRight = Math.Max(unionRight, (b.X + b.Width) * scale + dx);
+                unionBottom = Math.Max(unionBottom, (b.Y + b.Height) * scale + dy);
+            }
+
+            double margin = Math.Max(2, outSize * 0.02);
+            if (unionRight - unionLeft > outSize - 2 * margin
+                || unionBottom - unionTop > outSize - 2 * margin)
+            {
+                double fitScale = Math.Min((outSize - 2 * margin) / (unionRight - unionLeft),
+                    (outSize - 2 * margin) / (unionBottom - unionTop));
+                scale = Math.Min(scale, fitScale);
+
+                double defaultCenterX = (defaultBox.X + defaultBox.Width / 2.0) * outScale;
+                double defaultCenterY = (defaultBox.Y + defaultBox.Height / 2.0) * outScale;
+                double refCenterX = refBox.X + refBox.Width / 2.0;
+                double refCenterY = refBox.Y + refBox.Height / 2.0;
+                dx = defaultCenterX - refCenterX * scale;
+                dy = defaultCenterY - refCenterY * scale;
+            }
+
+            animation.Scale = scale;
+            animation.Dx = dx;
+            animation.Dy = dy;
+            animation.UseTransform = true;
+        }
+        catch
         {
-            double fitScale = Math.Min((outSize - 2 * margin) / (unionRight - unionLeft),
-                (outSize - 2 * margin) / (unionBottom - unionTop));
-            scale = Math.Min(scale, fitScale);
-
-            double defaultCenterX = (defaultBox.X + defaultBox.Width / 2.0) * outScale;
-            double defaultCenterY = (defaultBox.Y + defaultBox.Height / 2.0) * outScale;
-            double refCenterX = refBox.X + refBox.Width / 2.0;
-            double refCenterY = refBox.Y + refBox.Height / 2.0;
-            dx = defaultCenterX - refCenterX * scale;
-            dy = defaultCenterY - refCenterY * scale;
+            // 对齐计算失败：降级为直接播放原始帧。
+            animation.UseTransform = false;
         }
-
-        var result = new List<BitmapSource>(rawFrames.Count);
-        foreach (var frame in rawFrames)
-        {
-            result.Add(RenderScaledFrame(frame, scale, dx, dy, outSize));
-        }
-
-        return result;
     }
 
     private static BitmapSource RenderScaledFrame(
